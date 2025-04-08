@@ -1,0 +1,12 @@
+[package]
+name = "ndi_bindings"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+png = "0.17.16"
+thiserror = "2.0.12"
+
+[build-dependencies]
+bindgen = "0.71.1"
