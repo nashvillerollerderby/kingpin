@@ -1,0 +1,183 @@
+@let ptzState = $ptzState | async;
+
+<div class="p-5">
+
+  <article class="prose">
+    <h1>
+      PTZ Controls
+      @if (ptzState?.socketStarted) {
+        <div class="tooltip" data-tip="PTZ Socket connected">
+          <div aria-label="warning" class="status status-success"></div>
+        </div>
+      } @else {
+        <div class="tooltip" data-tip="PTZ Socket disconnected — try refreshing">
+          <div aria-label="warning" class="status status-error"></div>
+        </div>
+      }
+    </h1>
+  </article>
+
+  <div class="m-2 flex flex-row gap-2">
+    @if (!ptzState?.streamRunning) {
+      <button class="btn btn-primary" (click)="ptzService.refreshSources()">Refresh sources</button>
+
+      @for (source of ptzState?.sources; track source) {
+        <button class="btn btn-success" (click)="ptzService.selectSource(source)">{{ source }}</button>
+      } @empty {
+        <span class="m-2">No sources found</span>
+      }
+    } @else {
+      <p>Streaming from {{ ($ptzState | async)?.selectedSource }}</p>
+
+      <button class="btn btn-error" (click)="ptzService.stopStream()">Stop stream</button>
+    }
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="tabs tabs-border tabs-lg" role="tablist">
+    <a class="tab" role="tab" [ngClass]="!ptzState?.gamepadLoopStarted ? 'tab-active' : ''" (click)="ptzService.stopGamepadLoop()">Web Interface</a>
+    <a class="tab" role="tab" [ngClass]="ptzState?.gamepadLoopStarted ? 'tab-active' : ''" (click)="ptzService.startGamepadLoop()">
+      Gamepad&nbsp;
+      @if (ptzState?.gamepadConnected) {
+        <div class="tooltip" data-tip="Gamepad connected!">
+          <div aria-label="warning" class="status status-success"></div>
+        </div>
+      } @else {
+        <div class="tooltip" data-tip="Please connect a gamepad">
+          <div aria-label="warning" class="status status-error"></div>
+        </div>
+      }
+    </a>
+  </div>
+
+  @if (ptzState?.frame) {
+    <img [src]="ptzState!!.frame" height="540" width="960">
+  }
+
+  <div class="m-2">
+    @if (ptzState?.gamepadLoopStarted) {
+      <fieldset class="fieldset p-4 bg-base-100 border border-base-300 rounded-box w-64" [formGroup]="gamepadForm">
+        <legend class="fieldset-legend">Gamepad settings</legend>
+        <label for="invert-ls-horizontal" class="fieldset-label">
+          <input id="invert-ls-horizontal" type="checkbox" formControlName="invertLsHor" class="toggle"/>
+          Invert left stick horizontal
+        </label>
+        <label for="invert-ls-vertical" class="fieldset-label">
+          <input id="invert-ls-vertical" type="checkbox" formControlName="invertLsVert" class="toggle"/>
+          Invert left stick vertical
+        </label>
+        <label for="invert-rs-horizontal" class="fieldset-label">
+          <input id="invert-rs-horizontal" type="checkbox" formControlName="invertRsHor" class="toggle"/>
+          Invert right stick horizontal
+        </label>
+        <label for="invert-rs-vertical" class="fieldset-label">
+          <input id="invert-rs-vertical" type="checkbox" formControlName="invertRsVert" class="toggle"/>
+          Invert right stick vertical
+        </label>
+      </fieldset>
+    } @else {
+      <div id="size-warning" role="alert" class="alert alert-warning m-3">
+        <span>Screen width must be >=500px to use Preset controls. <b>If you're seeing this warning on a mobile device, try rotating your screen.</b></span>
+      </div>
+
+      @if (ptzState?.ptzIsSupported || !isProduction) {
+        <div id="track-tools" class="flex md:flex-col lg:flex-row">
+          <div id="track" class="m-1">
+            <button class="btn btn-primary preset-1" (click)="sendPresetAction(0)">Jam Line</button>
+            <button class="btn btn-primary preset-2" (click)="sendPresetAction(1)">Front Apex</button>
+            <button class="btn btn-primary preset-3" (click)="sendPresetAction(2)">Back Stretch</button>
+            <button class="btn btn-primary preset-4" (click)="sendPresetAction(3)">Back Apex</button>
+            <img [src]="trackImage" width="500" height="500" alt="An SVG image depicting a standard Roller Derby track"/>
+          </div>
+
+            @if (ptzState?.editPresets) {
+              <fieldset id="ptz-tools">
+              <button class="btn btn-success" (click)="ptzService.editPresets = false">Switch to Recall Mode</button>
+
+              <div id="arrows" class="m-5 grid grid-flow-col grid-rows-3 grid-cols-6 gap-2">
+                <button class="btn btn-primary btn-square btn-xl row-start-2"
+                        (mousedown)="startDirection('left')" (touchstart)="startDirection('left')"
+                        (mouseup)="endDirection('left')" (touchend)="endDirection('left')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>
+                </button>
+                <button class="btn btn-primary btn-square btn-xl col-start-2"
+                  (mousedown)="startDirection('up')" (touchstart)="startDirection('up')"
+                  (mouseup)="endDirection('up')" (touchend)="endDirection('up')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2 160 448c0 17.7 14.3 32 32 32s32-14.3 32-32l0-306.7L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/></svg>
+                </button>
+                <button class="btn btn-primary btn-square btn-xl col-start-2 row-start-3"
+                        (mousedown)="startDirection('down')" (touchstart)="startDirection('down')"
+                        (mouseup)="endDirection('down')" (touchend)="endDirection('down')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M169.4 470.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 370.8 224 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 306.7L54.6 265.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+                </button>
+
+                <button class="btn btn-primary btn-square btn-xl col-start-3 row-start-2"
+                        (mousedown)="startDirection('right')" (touchstart)="startDirection('right')"
+                        (mouseup)="endDirection('right')" (touchend)="endDirection('right')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"/></svg>
+                </button>
+
+                <button class="btn btn-primary btn-square btn-xl col-start-5"
+                        (mousedown)="startDirection('in')" (touchstart)="startDirection('in')"
+                        (mouseup)="endDirection('in')" (touchend)="endDirection('in')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM184 296c0 13.3 10.7 24 24 24s24-10.7 24-24l0-64 64 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-64 0 0-64c0-13.3-10.7-24-24-24s-24 10.7-24 24l0 64-64 0c-13.3 0-24 10.7-24 24s10.7 24 24 24l64 0 0 64z"/></svg>
+                </button>
+                <button class="btn btn-primary btn-square btn-xl col-start-5 row-start-3"
+                        (mousedown)="startDirection('out')" (touchstart)="startDirection('out')"
+                        (mouseup)="endDirection('out')" (touchend)="endDirection('out')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM136 184c-13.3 0-24 10.7-24 24s10.7 24 24 24l144 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-144 0z"/></svg>
+                </button>
+
+                <button class="btn btn-primary btn-square btn-xl col-start-6 row-start-2" (click)="focusOneshot()">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" class="h-5 w-5 fill-base-content"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M15 15C24.4 5.7 39.6 5.7 49 15l63 63L112 40c0-13.3 10.7-24 24-24s24 10.7 24 24l0 96c0 13.3-10.7 24-24 24l-96 0c-13.3 0-24-10.7-24-24s10.7-24 24-24l38.1 0L15 49C5.7 39.6 5.7 24.4 15 15zM133.5 243.9C158.6 193.6 222.7 112 320 112s161.4 81.6 186.5 131.9c3.8 7.6 3.8 16.5 0 24.2C481.4 318.4 417.3 400 320 400s-161.4-81.6-186.5-131.9c-3.8-7.6-3.8-16.5 0-24.2zM320 320a64 64 0 1 0 0-128 64 64 0 1 0 0 128zM591 15c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-63 63 38.1 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-96 0c-13.3 0-24-10.7-24-24l0-96c0-13.3 10.7-24 24-24s24 10.7 24 24l0 38.1 63-63zM15 497c-9.4-9.4-9.4-24.6 0-33.9l63-63L40 400c-13.3 0-24-10.7-24-24s10.7-24 24-24l96 0c13.3 0 24 10.7 24 24l0 96c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-38.1L49 497c-9.4 9.4-24.6 9.4-33.9 0zm576 0l-63-63 0 38.1c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-96c0-13.3 10.7-24 24-24l96 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-38.1 0 63 63c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0z"/></svg>
+                </button>
+              </div>
+
+              <fieldset class="fieldset p-4 bg-base-100 border border-base-300 rounded-box w-64 gap-3" [formGroup]="webInterfaceForm">
+                <legend class="fieldset-legend">Web interface settings</legend>
+                <label for="invert-pan" class="fieldset-label">
+                  <input id="invert-pan" type="checkbox" formControlName="invertPan" class="toggle"/>
+                  Invert pan
+                </label>
+                <label for="invert-tilt" class="fieldset-label">
+                  <input id="invert-tilt" type="checkbox" formControlName="invertTilt" class="toggle"/>
+                  Invert tilt
+                </label>
+                <label for="invert-zoom" class="fieldset-label">
+                  <input id="invert-zoom" type="checkbox" formControlName="invertZoom" class="toggle"/>
+                  Invert zoom
+                </label>
+                <label for="toggle-annotated-track" class="fieldset-label">
+                  <input id="toggle-annotated-track" type="checkbox" formControlName="showBlankTrack" class="toggle"/>
+                  Show blank track
+                </label>
+              </fieldset>
+            </fieldset>
+            } @else {
+              <button class="btn btn-warning" (click)="ptzService.editPresets = true">Switch to Edit Mode</button>
+            }
+        </div>
+
+        @if (!isProduction && !ptzState?.ptzIsSupported) {
+          <div class="alert alert-warning">
+            <span>PTZ is not supported on the chosen source. <b>This is a debug warning, shown because the environment is not production.</b></span>
+          </div>
+        }
+      } @else {
+        <div class="alert alert-warning">
+          <span>PTZ is not supported on the chosen source.</span>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="toast toast-end">
+    @for (message of messages; let i = $index; track message) {
+      <div role="alert" class="alert" [ngClass]="message.messageClass">
+        {{ message.message }}
+      </div>
+    }
+  </div>
+
+</div>

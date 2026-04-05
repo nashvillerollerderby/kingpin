@@ -1,0 +1,49 @@
+#track {
+  button {
+    position: relative;
+    z-index: 100;
+  }
+
+  img {
+    position: relative;
+    z-index: 1;
+  }
+
+  .preset-1 {
+    left: 191px;
+    top: 258px;
+  }
+
+  .preset-2 {
+    left: 230px;
+    top: 175px;
+  }
+
+  .preset-3 {
+    left: -15px;
+    top: 95px;
+  }
+
+  .preset-4 {
+    left: -295px;
+    top: 175px;
+  }
+}
+
+#ptz-tools {
+  max-width: max(400px, 50vw);
+}
+
+#size-warning {
+  display: none;
+}
+
+@media (max-width: 500px) {
+  #track-tools {
+    display: none;
+  }
+
+  #size-warning {
+    display: block;
+  }
+}

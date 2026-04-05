@@ -1,12 +1,13 @@
 use std::ffi::CStr;
-use crate::error::Result;
-use ndi_bindings::{FrameType, NDI, Receiver, Recv};
+use grafton_ndi::{FrameType, NDI, Receiver, ReceiverOptions, ReceiverStatus, FrameSync};
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
+use lodepng::ColorType;
+use yuvutils_rs::{YuvPackedImage, YuvRange, YuvStandardMatrix};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum StreamChannelMessage {
@@ -14,6 +15,7 @@ pub enum StreamChannelMessage {
     Running(bool),
     Ptz(bool),
     PtzAction(PtzAction),
+    Frame(String)
 }
 
 /// An exhaustive list of actions that can be applied to PTZ-enabled NDI devices
@@ -73,15 +75,16 @@ impl std::fmt::Display for PtzAction {
 }
 
 pub struct StreamState {
-    receiver: Option<Receiver>,
+    receiver_options: Option<ReceiverOptions>,
     pub ptz: bool,
 }
 
 pub struct NdiStream {
-    thread: Option<thread::JoinHandle<()>>,
+    action_handle: Option<thread::JoinHandle<()>>,
+    frame_handle: Option<thread::JoinHandle<()>>,
     stopped: Arc<RwLock<bool>>,
     pub stream_state: Arc<RwLock<StreamState>>,
-    tx: crossbeam_channel::Sender<StreamChannelMessage>,
+    message_bus: Arc<Mutex<bus::Bus<StreamChannelMessage>>>,
     rx: crossbeam_channel::Receiver<StreamChannelMessage>,
 }
 
@@ -89,23 +92,24 @@ impl NdiStream {
     pub fn new() -> (
         Self,
         crossbeam_channel::Sender<StreamChannelMessage>,
-        crossbeam_channel::Receiver<StreamChannelMessage>,
+        Arc<Mutex<bus::Bus<StreamChannelMessage>>>,
     ) {
         let (tx, rx) = crossbeam_channel::bounded(300);
-        let (ptx, prx) = crossbeam_channel::bounded(300);
+        let bus = Arc::new(Mutex::new(bus::Bus::new(300)));
         (
             NdiStream {
-                thread: Default::default(),
+                action_handle: Default::default(),
+                frame_handle: Default::default(),
                 stopped: Arc::new(RwLock::new(true)),
                 stream_state: Arc::new(RwLock::new(StreamState {
-                    receiver: None,
-                    ptz: false,
+                    receiver_options: None,
+                    ptz: true,
                 })),
-                tx: ptx,
+                message_bus: bus.clone(),
                 rx,
             },
             tx,
-            prx,
+            bus,
         )
     }
 
@@ -113,12 +117,19 @@ impl NdiStream {
         !*self.stopped.read().expect("Unable to read stream stopped")
     }
 
-    pub fn set_receiver(&self, receiver: Receiver) {
-        let mut state = self
-            .stream_state
-            .write()
-            .expect("Unable to write to stream state");
-        state.receiver = Some(receiver);
+    pub fn set_receiver_options(&self, options: ReceiverOptions) {
+        match NDI::new() {
+                Ok(ndi) => {
+                let mut state = self
+                    .stream_state
+                    .write()
+                    .expect("Unable to write to stream state");
+                state.receiver_options = Some(options);
+            }
+            Err(e) => {
+                log::error!("{}", e);
+            }
+        }
     }
 
     pub fn stop(&self) {
@@ -136,67 +147,93 @@ impl NdiStream {
                 .write()
                 .expect("Unable to write to stream stopped") = false;
         }
-        let state = self.stream_state.clone();
-        let tx = self.tx.clone();
+
+        let read_frames = false;
+        let frame_state = self.stream_state.clone();
+        let frame_bus = self.message_bus.clone();
         let rx = self.rx.clone();
-        let stopped = self.stopped.clone();
-        self.thread = Some(thread::spawn(move || {
+        let frame_stopped = self.stopped.clone();
+
+        let action_state = self.stream_state.clone();
+        let action_bus = self.message_bus.clone();
+        let action_stopped = self.stopped.clone();
+
+        if read_frames {
+            self.frame_handle = Some(thread::spawn(move || {
             match NDI::new() {
                 Ok(ndi) => {
-                    let mut state = state.write().expect("Unable to write to stream state");
+                    let state = frame_state.read().expect("Unable to write to stream state");
 
-                    let mut recv = Recv::new(&ndi, state.receiver.clone().unwrap())
-                        .expect("Unable to create recv");
+                    let receiver = Receiver::new(&ndi, &state.receiver_options.as_ref().unwrap())
+                        .expect("Unable to create receiver for source");
+                    let fs = FrameSync::new(receiver).expect("Unable to framesync");
 
-                    log::info!("Starting stream loop");
-                    while !*stopped.read().expect("Unable to read stream stopped") {
+                    log::info!("Starting action stream loop");
+                    while !*frame_stopped.read().expect("Unable to read stream stopped") {
+                        if let Some(Ok(frame)) = fs.capture_video_owned(grafton_ndi::ScanType::Progressive) {    
+                            match frame.encode_data_url(grafton_ndi::ImageFormat::Png) {
+                                Ok(data_url) => {
+                                    let mut bus = frame_bus.lock().expect("Could not write to message bus");
+                                    bus.broadcast(StreamChannelMessage::Frame(data_url));
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to encode data_url: {}", e);
+                                }
+                            }
+                        };
+                    }
+                    log::info!("Ending stream loop");
+                    {
+                        let mut bus = frame_bus.lock().expect("Could not write to message bus");
+                        bus.broadcast(StreamChannelMessage::Ptz(false));
+                        bus.broadcast(StreamChannelMessage::Running(false));
+                    }
+                }
+                Err(e) => {
+                    log::error!("{}", e);
+                }
+            }
+        }));
+        }
+        
+        self.action_handle = Some(thread::spawn(move || {
+            match NDI::new() {
+                Ok(ndi) => {
+                    let state = action_state.read().expect("Unable to write to stream state");
+                    let mut receiver = Receiver::new(&ndi, &state.receiver_options.as_ref().unwrap())
+                        .expect("Unable to create receiver for source");
+
+                    log::info!("Starting action stream loop");
+                    while !*action_stopped.read().expect("Unable to read stream stopped") {
                         log::trace!("stream::start::thread while running loop");
                         while let Ok(action) = rx.try_recv() {
                             match action {
                                 StreamChannelMessage::NewListener => {
-                                    tx.send(StreamChannelMessage::Ptz(state.ptz)).expect("Could not send Ptz message");
-                                    tx.send(StreamChannelMessage::Running(true)).expect("Could not send Running message");
+                                    {
+                                        let mut bus = action_bus.lock().expect("Could not write to message bus");
+                                        bus.broadcast(StreamChannelMessage::Ptz(state.ptz));
+                                        bus.broadcast(StreamChannelMessage::Running(true));
+                                    }
                                 }
                                 StreamChannelMessage::PtzAction(action) => {
                                     if state.ptz {
-                                        if !handle_ptz_action(&ndi, &mut recv, action) { 
-                                            log::warn!("Failed to apply action: {}", action);
-                                            recv = Recv::new(&ndi, state.receiver.clone().unwrap())
-                                                .expect("Unable to create recv");
-                                            handle_ptz_action(&ndi, &mut recv, action);
-                                        }
+                                        handle_ptz_action(&ndi, &mut receiver, action);
                                     } else {
                                         log::warn!("PTZ is not enabled on device");
                                     }
                                 }
-                                _ => {}
+                                _ => {
+                                    log::info!("Other action received");
+                                }
                             }
-                            thread::sleep(Duration::from_millis(100));
-                        }
-
-                        match recv.capture(1000) {
-                            Ok(FrameType::StatusChange) => {
-                                log::debug!("StatusChange frame received");
-                                state.ptz = recv.ptz_is_supported();
-                                tx.send(StreamChannelMessage::Ptz(state.ptz)).expect("Could not send Ptz message");
-                            }
-                            Ok(FrameType::Metadata(metadata)) => {
-                                log::info!("{:?}", metadata);
-                                let meta = unsafe {
-                                    let c_str = CStr::from_ptr(metadata.p_data);
-                                    String::from_utf8_lossy(c_str.to_bytes())
-                                };
-                                log::info!("c_str {}", meta);
-                            }
-                            Err(e) => {
-                                log::error!("Error on capture: {}", e);
-                            }
-                            _ => {}
                         }
                     }
                     log::info!("Ending stream loop");
-                    tx.send(StreamChannelMessage::Ptz(false)).expect("Could not send Ptz message");
-                    tx.send(StreamChannelMessage::Running(false)).expect("Could not send Running message");
+                    {
+                        let mut bus = action_bus.lock().expect("Could not write to message bus");
+                        bus.broadcast(StreamChannelMessage::Ptz(false));
+                        bus.broadcast(StreamChannelMessage::Running(false));
+                    }
                 }
                 Err(e) => {
                     log::error!("{}", e);
@@ -213,8 +250,8 @@ impl NdiStream {
     // }
 }
 
-fn handle_ptz_action(ndi: &NDI, recv: &mut Recv, action: PtzAction) -> bool {
-    log::info!("Received PTZ action: {}", action);
+fn handle_ptz_action(ndi: &NDI, recv: &mut Receiver, action: PtzAction) -> Result<(), grafton_ndi::Error> {
+    log::trace!("Received PTZ action: {}", action);
     match action {
         PtzAction::RecallPreset { preset, speed } => {
             recv.ptz_recall_preset(preset, speed)

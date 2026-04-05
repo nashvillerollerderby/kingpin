@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1148.085px" height="759.96px" viewBox="0 0 1148.085 759.96" enable-background="new 0 0 1148.085 759.96" xml:space="preserve">
+<g id="track_external">
+	<path fill="#E3AEE1" stroke="#000000" stroke-width="1.5" stroke-dasharray="10" d="M686.347,1.018   c0,0,339.785-23.098,351.727,359.598c-29.396,358.02-352.775,337.026-352.775,337.026s-366.423,23.095-385.321,22.045   C281.081,718.638,1.801,667.19,0.75,370.062C18.598,16.236,335.676,21.489,335.676,21.489L686.347,1.018z" />
+</g>
+<g id="track">
+	<g>
+		<path fill="#BAFEFC" stroke="#004CC5" stroke-width="3" d="M683.208,97.079c0,0,255.755,2.155,260.381,263.448    c-2.626,182.707-172.955,248.682-258.282,246.813c-32.549,2.1-268.142,13.132-283.479,14.699    c-92.392,9.449-299.864-28.806-305.008-254.604c5.144-258.201,274.466-254.931,274.466-254.931L683.208,97.079z" />
+	</g>
+</g>
+<g id="track_inner">
+	<path fill="#E3AEE1" stroke="#002FE8" stroke-width="3" d="M687.389,241.969c0,0,119.709,4.198,118.659,129.14   c-8.4,73.494-72.559,109.192-121.792,109.192c-20.91,0.945-331.388,0.892-341.225,0c-57.746-5.249-113.392-53.547-110.242-122.842   c11.55-106.042,104.993-114.442,104.993-114.442L687.389,241.969z" />
+</g>
+<g id="lines">
+	<path fill="none" d="M544.974,163.483" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="449.394" y1="166.747" x2="449.394" y2="186.795" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="544.506" y1="163.173" x2="544.506" y2="183.221" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="639.621" y1="160.998" x2="639.621" y2="181.046" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="354.903" y1="169.078" x2="354.903" y2="189.127" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="248.767" y1="199.708" x2="260.867" y2="215.692" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="304.365" y1="535.667" x2="298.516" y2="554.844" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="591.753" y1="555.748" x2="591.753" y2="535.7" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="496.641" y1="559.322" x2="496.641" y2="539.273" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="218.991" y1="479.088" x2="204.854" y2="493.308" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="177.056" y1="388.218" x2="157.272" y2="391.466" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="175.867" y1="281.719" x2="194.514" y2="289.088" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="791.317" y1="522.518" x2="779.216" y2="506.532" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="735.72"  y1="186.558" x2="741.567" y2="167.38" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="821.092" y1="243.137" x2="835.229" y2="228.917" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="863.029" y1="337.737" x2="882.812" y2="334.488" />
+  <line fill="#FFFFFF" stroke="#000000" stroke-width="2" x1="864.216" y1="440.506" x2="845.571" y2="433.137" />
+</g>
+<g id="starting_lines">
+	<line fill="none" stroke="#F00000" stroke-width="1.5" x1="401.827" y1="481.35" x2="401.827" y2="622.04" />
+    <line fill="none" stroke="#F00000" stroke-width="1.5" x1="685.83" y1="480.301" x2="685.83" y2="607.34" />
+</g>
+</svg>

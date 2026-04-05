@@ -4,6 +4,8 @@ node
 node_modules
 target
 server/log
+server/kingpin
+ndilib
 
 # Added by cargo
 
