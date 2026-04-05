@@ -36,7 +36,7 @@ export interface GamepadRef {
 
 export enum GamepadIdentifier {
   DualSense = 'DualSense',
-  Xbox = 'Xbox',
+  Xbox = 'X-Box',
   Stadia = 'Stadia',
 }
 
@@ -110,12 +110,50 @@ export const DualSense: GamepadRef = {
   },
 }
 
+export const Xbox: GamepadRef = {
+  identifier: GamepadIdentifier.Xbox,
+  buttonRef: {
+    a: 0,
+    b: 1,
+    y: 2,
+    x: 3,
+    lb: 4,
+    rb: 5,
+    select: 8,
+    start: 9,
+    ls: 10,
+    rs: 11,
+    d_up: 12,
+    d_down: 13,
+    d_left: 14,
+    d_right: 15,
+    rt: 7,
+    lt: 6,
+  },
+  axisRef: {
+    ls_hor: 0,
+    ls_vert: 1,
+    rs_hor: 2,
+    rs_vert: 3,
+    rt: 5,
+    lt: 4,
+  },
+  propButtonRef: {
+    stadia: 16,
+    google: 20,
+    box: 21,
+  },
+}
+
 export const getGamepadRef = (gamepad: Gamepad): GamepadRef | undefined => {
   if (gamepad.id.includes(GamepadIdentifier.Stadia)) {
     return Stadia;
   } else if (gamepad.id.includes(GamepadIdentifier.DualSense)) { 
     return DualSense;
+  } else if (gamepad.id.includes(GamepadIdentifier.Xbox)) {
+    return Xbox;
   } else {
+    console.log(gamepad);
     return undefined;
   }
 };
