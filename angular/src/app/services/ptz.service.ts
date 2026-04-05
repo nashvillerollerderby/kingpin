@@ -40,14 +40,14 @@ export class GamepadSettings {
     public presetGroup: PresetGroup = 'one',
     public lsHorSens: number = 0.5,
     public lsVertSens: number = 0.5,
-    public rsHorSens: number = 0.15,
-    public rsVertSens: number = 0.05,
+    public rsHorSens: number = 0.5,
+    public rsVertSens: number = 0.5,
     public invertLsHor: number = 1,
     public invertLsVert: number = 1,
     public invertRsHor: number = -1,
     public invertRsVert: number = -1,
     public focus_v: number = 0,
-    public deadzone_pct: number = 0.075,
+    public deadzonePct: number = 0.075,
   ) {}
 }
 
@@ -166,7 +166,6 @@ export class PtzService {
     )
       .pipe(
         tap(settings => {
-          console.log(settings);
           if (settings instanceof GamepadSettings) {
             localStorage.setItem(GAMEPAD_SETTINGS_KEY, JSON.stringify(settings));
           } else if (settings instanceof WebInterfaceSettings) {
@@ -603,11 +602,11 @@ export class PtzService {
   }
 
   get deadzone_pct(): number {
-    return this.gamepadSettings.deadzone_pct;
+    return this.gamepadSettings.deadzonePct;
   }
 
   set deadzone_pct(pct: number) {
-    this.gamepadSettings.deadzone_pct = pct;
+    this.gamepadSettings.deadzonePct = pct;
     this.gamepadSettingsUpdated.next(this.gamepadSettings);
   }
 }

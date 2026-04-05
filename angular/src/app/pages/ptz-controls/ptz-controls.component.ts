@@ -34,6 +34,7 @@ export class PtzControlsComponent implements OnInit, OnDestroy{
   $destroyed = new Subject<void>();
 
   $ptzState = this.ptzService.ptzStateUpdated;
+  $gamepadSettings = this.ptzService.gamepadSettingsUpdated;
   $messages = this.ptzService.messageSubject;
   $pushMessage = new Subject<PtzMessage>();
   $sendPresetAction = new Subject<PresetIndex>();
@@ -43,10 +44,13 @@ export class PtzControlsComponent implements OnInit, OnDestroy{
     presetGroup: new FormControl(this.ptzService.gamepadSettings.presetGroup),
     lsHorSens: new FormControl(this.ptzService.gamepadSettings.lsHorSens),
     lsVertSens: new FormControl(this.ptzService.gamepadSettings.lsVertSens),
+    rsHorSens: new FormControl(this.ptzService.gamepadSettings.rsHorSens),
+    rsVertSens: new FormControl(this.ptzService.gamepadSettings.rsVertSens),
     invertLsHor: new FormControl(this.ptzService.gamepadSettings.invertLsHor == -1),
     invertLsVert: new FormControl(this.ptzService.gamepadSettings.invertLsVert == -1),
     invertRsHor: new FormControl(this.ptzService.gamepadSettings.invertRsHor == -1),
     invertRsVert: new FormControl(this.ptzService.gamepadSettings.invertRsVert == -1),
+    deadzonePct: new FormControl(this.ptzService.gamepadSettings.deadzonePct),
   });
 
   webInterfaceForm = new FormBuilder().group({
@@ -64,10 +68,13 @@ export class PtzControlsComponent implements OnInit, OnDestroy{
       tap(value => {
         this.ptzService.gamepadSettings.lsHorSens = value.lsHorSens as number;
         this.ptzService.gamepadSettings.lsVertSens = value.lsVertSens as number;
+        this.ptzService.gamepadSettings.rsHorSens = value.rsHorSens as number;
+        this.ptzService.gamepadSettings.rsVertSens = value.rsVertSens as number;
         this.ptzService.gamepadSettings.invertLsHor = value.invertLsHor ? -1 : 1;
         this.ptzService.gamepadSettings.invertLsVert = value.invertLsVert ? -1 : 1;
         this.ptzService.gamepadSettings.invertRsHor = value.invertRsHor ? -1 : 1;
         this.ptzService.gamepadSettings.invertRsVert = value.invertRsVert ? -1 : 1;
+        this.ptzService.gamepadSettings.deadzonePct = value.deadzonePct as number;
 
         this.ptzService.gamepadSettingsUpdated.next(this.ptzService.gamepadSettings);
       })

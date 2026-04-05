@@ -1,4 +1,5 @@
 @let ptzState = $ptzState | async;
+@let gamepadSettings = $gamepadSettings | async;
 
 <div class="p-5">
 
@@ -57,7 +58,7 @@
 
   <div class="m-2">
     @if (ptzState?.gamepadLoopStarted) {
-      <fieldset class="fieldset p-4 bg-base-100 border border-base-300 rounded-box w-64" [formGroup]="gamepadForm">
+      <fieldset class="fieldset p-4 bg-base-100 border border-base-300 rounded-box w-128" [formGroup]="gamepadForm">
         <legend class="fieldset-legend">Gamepad settings</legend>
         <label for="invert-ls-horizontal" class="fieldset-label">
           <input id="invert-ls-horizontal" type="checkbox" formControlName="invertLsHor" class="toggle"/>
@@ -67,6 +68,17 @@
           <input id="invert-ls-vertical" type="checkbox" formControlName="invertLsVert" class="toggle"/>
           Invert left stick vertical
         </label>
+        <label for="left-stick-horizontal-sensitivity" class="fieldset-label">
+          <input id="left-stick-horizontal-sensitivity" type="range" min="0" max="1" step="0.01" formControlName="lsHorSens">
+          Left stick horizontal sensitivity: {{ gamepadForm.value?.lsHorSens }}
+        </label>
+        <label for="left-stick-vertical-sensitivity" class="fieldset-label">
+          <input id="left-stick-vertical-sensitivity" type="range" min="0" max="1" step="0.01" formControlName="lsVertSens">
+          Left stick vertical sensitivity: {{ gamepadForm.value?.lsVertSens }}
+        </label>
+
+        <br class="m-2"/>
+
         <label for="invert-rs-horizontal" class="fieldset-label">
           <input id="invert-rs-horizontal" type="checkbox" formControlName="invertRsHor" class="toggle"/>
           Invert right stick horizontal
@@ -74,6 +86,21 @@
         <label for="invert-rs-vertical" class="fieldset-label">
           <input id="invert-rs-vertical" type="checkbox" formControlName="invertRsVert" class="toggle"/>
           Invert right stick vertical
+        </label>
+        <label for="right-stick-horizontal-sensitivity" class="fieldset-label">
+          <input id="right-stick-horizontal-sensitivity" type="range" min="0" max="1" step="0.01" formControlName="rsHorSens">
+          Right stick horizontal sensitivity: {{ gamepadForm.value?.rsHorSens }}
+        </label>
+        <label for="right-stick-vertical-sensitivity" class="fieldset-label">
+          <input id="right-stick-vertical-sensitivity" type="range" min="0" max="1" step="0.01" formControlName="rsVertSens">
+          Right stick vertical sensitivity: {{ gamepadForm.value?.rsVertSens }}
+        </label>
+
+        <br class="m-2"/>
+
+        <label for="deadzone-pct" class="fieldset-label">
+          <input id="deadzone-pct" type="range" min="0" max="1" step="0.005" formControlName="deadzonePct">
+          Stick deadzone: {{ gamepadForm.value?.deadzonePct }}
         </label>
       </fieldset>
     } @else {

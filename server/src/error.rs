@@ -11,8 +11,6 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
     #[error("Scoreboard: {0}")]
     Scoreboard(#[from] ScoreboardError),
-    #[error("NDI: {0}")]
-    NDI(#[from] ndi_bindings::Error),
 }
 
 #[derive(Debug, Error)]
