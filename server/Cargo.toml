@@ -5,9 +5,17 @@ edition = "2024"
 default-run = "server"
 build = "build.rs"
 
+[features]
+with_gui = []
+
 [[bin]]
 name = "server"
 path = "src/main.rs"
+
+[[bin]]
+name = "gui"
+path = "src/gui.rs"
+required_features = ["with_gui"]
 
 [dependencies]
 axum = { version = "0.8.3", features = ["macros", "ws"] }
@@ -18,13 +26,10 @@ futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 grafton-ndi = { version = "0.11.0", features = ["tokio", "image-encoding", "async-std"] }
 headers = "0.4.0"
-lodepng = "3.11.0"
 log = "0.4.27"
 log4rs = { version = "1.3.0", features = ["console_appender", "rolling_file_appender"] }
-openh264 = "0.8.1"
-port_scanner = "0.1.5"
 reqwest = "0.12.15"
-rustscan = "2.4.1"
+sdl2 = { version = "0.38.0" }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_xml = "0.9.1"
@@ -36,4 +41,3 @@ tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = ["fs"] }
 tungstenite = "0.26.2"
 uuid = { version = "1.16.0", features = ["serde"] }
-yuvutils-rs = { version = "0.8.3", features = ["fast_mode"] }

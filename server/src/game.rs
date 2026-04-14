@@ -61,11 +61,76 @@ impl<'de> Deserialize<'de> for GameFileState {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[serde(rename_all = "PascalCase")]
+enum ClockType {
+    Intermission,
+    Jam,
+    Lineup,
+    Period,
+    Timeout,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Clock {
+    direction: bool,
+    id: uuid::Uuid,
+    inverted_time: u32,
+    maximum_time: u32,
+    name: String,
+    number: u16,
+    readonly: bool,
+    running: bool,
+    time: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all="PascalCase")]
+struct EventInfo {
+    date: String,
+    start_time: String
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Game {
     abort_reason: String,
-    direction: bool,
+    clock: HashMap<ClockType, Clock>,
+    clock_during_final_score: bool,
+    current_period: uuid::Uuid,
+    current_period_number: u8,
+    current_timeout: String,
+    event_info: EventInfo,
+    export_blocked_by: String,
+    filename: String,
+    id: uuid::Uuid,
+    in_jam: bool,
+    in_overtime: bool,
+    in_period: bool,
+    in_sudden_scoring: bool,
+    injury_continuation_upcoming: bool,
+    // jam
+    json_exists: bool,
+    labels: HashMap<LabelType, String>,
+    name: String,
+    name_format: String,
+    no_more_jam: bool,
+    official_review: bool,
+    official_score: bool,
+    penalty_code: HashMap<PenaltyCode, String>,
+    periods: HashMap<u8, Period>,
+    read_only: bool,
+    rule: HashMap<String, String>,
+    ruleset_name: String,
+    state: String,
+    statsbook_exists: bool,
+    suspensions_served: String,
+    teams: HashMap<u8, Team>,
+    timeout_owner: String,
+    upcoming_jam: uuid::Uuid,
+    upcoming_jam_number: u8,
+    update_in_progress: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -88,23 +153,6 @@ impl From<VersionKey> for String {
         }.into()
     }
 }
-
-// impl TryFrom<String> for VersionKey {
-//     type Error = Error;
-//
-//     fn try_from(value: String) -> Result<VersionKey> {
-//         Ok(match value.as_str() {
-//             "release" => VersionKey::Release,
-//             "release.commit" => VersionKey::Commit,
-//             "release.host" => VersionKey::Host,
-//             "release.time" => VersionKey::Time,
-//             "release.user" => VersionKey::User,
-//             _ => return Err(Error::Scoreboard(ScoreboardError::InvalidVersionKey(value))),
-//         })
-//     }
-// }
-
-
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum GameListenerMessage {

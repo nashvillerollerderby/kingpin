@@ -1,13 +1,11 @@
 use std::ffi::CStr;
-use grafton_ndi::{FrameType, NDI, Receiver, ReceiverOptions, ReceiverStatus, FrameSync};
+use grafton_ndi::{FrameSync, FrameType, NDI, Receiver, ReceiverOptions, ReceiverStatus, VideoFrame};
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
-use lodepng::ColorType;
-use yuvutils_rs::{YuvPackedImage, YuvRange, YuvStandardMatrix};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum StreamChannelMessage {
@@ -86,10 +84,11 @@ pub struct NdiStream {
     pub stream_state: Arc<RwLock<StreamState>>,
     message_bus: Arc<Mutex<bus::Bus<StreamChannelMessage>>>,
     rx: crossbeam_channel::Receiver<StreamChannelMessage>,
+    frame_tx: crossbeam_channel::Sender<VideoFrame>,
 }
 
 impl NdiStream {
-    pub fn new() -> (
+    pub fn new(frame_tx: crossbeam_channel::Sender<VideoFrame>) -> (
         Self,
         crossbeam_channel::Sender<StreamChannelMessage>,
         Arc<Mutex<bus::Bus<StreamChannelMessage>>>,
@@ -107,6 +106,7 @@ impl NdiStream {
                 })),
                 message_bus: bus.clone(),
                 rx,
+                frame_tx,
             },
             tx,
             bus,
@@ -148,9 +148,14 @@ impl NdiStream {
                 .expect("Unable to write to stream stopped") = false;
         }
 
+        #[cfg(feature = "with_gui")]
+        let read_frames = true;
+        #[cfg(not(feature = "with_gui"))]
         let read_frames = false;
-        let frame_state = self.stream_state.clone();
+
+        let frame_state: Arc<RwLock<StreamState>> = self.stream_state.clone();
         let frame_bus = self.message_bus.clone();
+        let frame_tx = self.frame_tx.clone();
         let rx = self.rx.clone();
         let frame_stopped = self.stopped.clone();
 
@@ -168,19 +173,20 @@ impl NdiStream {
                         .expect("Unable to create receiver for source");
                     let fs = FrameSync::new(receiver).expect("Unable to framesync");
 
-                    log::info!("Starting action stream loop");
+                    log::info!("Starting frame stream loop");
                     while !*frame_stopped.read().expect("Unable to read stream stopped") {
-                        if let Some(Ok(frame)) = fs.capture_video_owned(grafton_ndi::ScanType::Progressive) {    
-                            match frame.encode_data_url(grafton_ndi::ImageFormat::Png) {
-                                Ok(data_url) => {
-                                    let mut bus = frame_bus.lock().expect("Could not write to message bus");
-                                    bus.broadcast(StreamChannelMessage::Frame(data_url));
-                                }
-                                Err(e) => {
-                                    log::error!("Failed to encode data_url: {}", e);
-                                }
+                        match fs.capture_video_owned(grafton_ndi::ScanType::Progressive) {
+                            Some(Ok(frame)) => {
+                                log::info!("Received frame in stream thread");
+                                frame_tx.send(frame).ok();
                             }
-                        };
+                            Some(Err(e)) => {
+                                log::error!("{}", e);
+                            }
+                            None => {
+                                log::info!("No frame data");
+                            }
+                        }
                     }
                     log::info!("Ending stream loop");
                     {
