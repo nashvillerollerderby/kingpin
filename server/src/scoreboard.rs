@@ -14,7 +14,6 @@ use axum_extra::TypedHeader;
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
 use tungstenite::client::IntoClientRequest;
-use crate::game::GameListener;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -89,15 +88,15 @@ impl ScoreboardRouterState {
     }
 }
 
-pub async fn scoreboard() -> Router {
-    let state = Arc::new(ScoreboardRouterState::new());
+// pub async fn scoreboard() -> Router {
+    // let state = Arc::new(ScoreboardRouterState::new());
 
-    let (listener, tx, bus) = GameListener::new(state.clone());
+    // let (listener, tx, bus) = GameListener::new(state.clone());
 
-    Router::new()
-        .route("/ws", any(ws_handler))
-        .with_state(state)
-}
+    // Router::new()
+    //     .route("/ws", any(ws_handler))
+    //     .with_state(state)
+// }
 
 async fn ws_handler(
     State(shared_state): State<Arc<ScoreboardRouterState>>,
