@@ -12,23 +12,24 @@ game_parser = []
 
 [[bin]]
 name = "server"
-path = "src/main.rs"
-required_features = ["server"]
+path = "src/server.rs"
+required-features = ["server"]
 
 [[bin]]
 name = "gui"
 path = "src/gui.rs"
-required_features = ["with_gui"]
+required-features = ["with_gui"]
 
 [[bin]]
 name = "game-parser"
 path = "src/game.rs"
-required_features = ["game_parser"]
+required-features = ["game_parser"]
 
 [dependencies]
 axum = { version = "0.8.3", features = ["macros", "ws"] }
 axum-extra = { version = "0.10.1", features = ["typed-header"] }
 bus = "2.4.1"
+chrono = "0.4.44"
 crossbeam-channel = "0.5.14"
 futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
@@ -38,7 +39,7 @@ log = "0.4.27"
 log4rs = { version = "1.3.0", features = ["console_appender", "rolling_file_appender"] }
 regex = "1.12.3"
 reqwest = "0.12.15"
-sdl2 = { version = "0.38.0" }
+sdl2 = "0.38.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_xml = "0.9.1"

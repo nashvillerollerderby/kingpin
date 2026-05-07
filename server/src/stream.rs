@@ -1,6 +1,8 @@
-use std::ffi::CStr;
-use grafton_ndi::{FrameSync, FrameType, NDI, Receiver, ReceiverOptions, ReceiverStatus, VideoFrame};
+use grafton_ndi::{
+    FrameSync, FrameType, NDI, Receiver, ReceiverOptions, ReceiverStatus, VideoFrame,
+};
 use serde::{Deserialize, Serialize};
+use std::ffi::CStr;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
@@ -13,7 +15,7 @@ pub enum StreamChannelMessage {
     Running(bool),
     Ptz(bool),
     PtzAction(PtzAction),
-    Frame(String)
+    Frame(String),
 }
 
 /// An exhaustive list of actions that can be applied to PTZ-enabled NDI devices
@@ -88,7 +90,9 @@ pub struct NdiStream {
 }
 
 impl NdiStream {
-    pub fn new(frame_tx: crossbeam_channel::Sender<VideoFrame>) -> (
+    pub fn new(
+        frame_tx: crossbeam_channel::Sender<VideoFrame>,
+    ) -> (
         Self,
         crossbeam_channel::Sender<StreamChannelMessage>,
         Arc<Mutex<bus::Bus<StreamChannelMessage>>>,
@@ -119,7 +123,7 @@ impl NdiStream {
 
     pub fn set_receiver_options(&self, options: ReceiverOptions) {
         match NDI::new() {
-                Ok(ndi) => {
+            Ok(ndi) => {
                 let mut state = self
                     .stream_state
                     .write()
@@ -138,6 +142,9 @@ impl NdiStream {
             .write()
             .expect("Unable to write to stream stopped") = true;
         log::info!("Stream stopped written as 'true'");
+        // if let Some(ref handle) = self.frame_handle {
+        //     while !handle.is_finished() {}
+        // }
     }
 
     pub fn start(&mut self) {
@@ -164,8 +171,7 @@ impl NdiStream {
         let action_stopped = self.stopped.clone();
 
         if read_frames {
-            self.frame_handle = Some(thread::spawn(move || {
-            match NDI::new() {
+            self.frame_handle = Some(thread::spawn(move || match NDI::new() {
                 Ok(ndi) => {
                     let state = frame_state.read().expect("Unable to write to stream state");
 
@@ -177,14 +183,14 @@ impl NdiStream {
                     while !*frame_stopped.read().expect("Unable to read stream stopped") {
                         match fs.capture_video_owned(grafton_ndi::ScanType::Progressive) {
                             Some(Ok(frame)) => {
-                                log::info!("Received frame in stream thread");
+                                log::debug!("Received frame in stream thread");
                                 frame_tx.send(frame).ok();
                             }
                             Some(Err(e)) => {
                                 log::error!("{}", e);
                             }
                             None => {
-                                log::info!("No frame data");
+                                log::warn!("No frame data");
                             }
                         }
                     }
@@ -198,52 +204,53 @@ impl NdiStream {
                 Err(e) => {
                     log::error!("{}", e);
                 }
-            }
-        }));
+            }));
         }
-        
-        self.action_handle = Some(thread::spawn(move || {
-            match NDI::new() {
-                Ok(ndi) => {
-                    let state = action_state.read().expect("Unable to write to stream state");
-                    let mut receiver = Receiver::new(&ndi, &state.receiver_options.as_ref().unwrap())
-                        .expect("Unable to create receiver for source");
 
-                    log::info!("Starting action stream loop");
-                    while !*action_stopped.read().expect("Unable to read stream stopped") {
-                        log::trace!("stream::start::thread while running loop");
-                        while let Ok(action) = rx.try_recv() {
-                            match action {
-                                StreamChannelMessage::NewListener => {
-                                    {
-                                        let mut bus = action_bus.lock().expect("Could not write to message bus");
-                                        bus.broadcast(StreamChannelMessage::Ptz(state.ptz));
-                                        bus.broadcast(StreamChannelMessage::Running(true));
-                                    }
+        self.action_handle = Some(thread::spawn(move || match NDI::new() {
+            Ok(ndi) => {
+                let state = action_state
+                    .read()
+                    .expect("Unable to write to stream state");
+                let mut receiver = Receiver::new(&ndi, &state.receiver_options.as_ref().unwrap())
+                    .expect("Unable to create receiver for source");
+
+                log::info!("Starting action stream loop");
+                while !*action_stopped
+                    .read()
+                    .expect("Unable to read stream stopped")
+                {
+                    log::trace!("stream::start::thread while running loop");
+                    while let Ok(action) = rx.try_recv() {
+                        match action {
+                            StreamChannelMessage::NewListener => {
+                                let mut bus =
+                                    action_bus.lock().expect("Could not write to message bus");
+                                bus.broadcast(StreamChannelMessage::Ptz(state.ptz));
+                                bus.broadcast(StreamChannelMessage::Running(true));
+                            }
+                            StreamChannelMessage::PtzAction(action) => {
+                                if state.ptz {
+                                    handle_ptz_action(&ndi, &mut receiver, action);
+                                } else {
+                                    log::warn!("PTZ is not enabled on device");
                                 }
-                                StreamChannelMessage::PtzAction(action) => {
-                                    if state.ptz {
-                                        handle_ptz_action(&ndi, &mut receiver, action);
-                                    } else {
-                                        log::warn!("PTZ is not enabled on device");
-                                    }
-                                }
-                                _ => {
-                                    log::info!("Other action received");
-                                }
+                            }
+                            _ => {
+                                log::info!("Other action received");
                             }
                         }
                     }
-                    log::info!("Ending stream loop");
-                    {
-                        let mut bus = action_bus.lock().expect("Could not write to message bus");
-                        bus.broadcast(StreamChannelMessage::Ptz(false));
-                        bus.broadcast(StreamChannelMessage::Running(false));
-                    }
                 }
-                Err(e) => {
-                    log::error!("{}", e);
+                log::info!("Ending stream loop");
+                {
+                    let mut bus = action_bus.lock().expect("Could not write to message bus");
+                    bus.broadcast(StreamChannelMessage::Ptz(false));
+                    bus.broadcast(StreamChannelMessage::Running(false));
                 }
+            }
+            Err(e) => {
+                log::error!("{}", e);
             }
         }));
     }
@@ -256,44 +263,32 @@ impl NdiStream {
     // }
 }
 
-fn handle_ptz_action(ndi: &NDI, recv: &mut Receiver, action: PtzAction) -> Result<(), grafton_ndi::Error> {
+fn handle_ptz_action(
+    ndi: &NDI,
+    recv: &mut Receiver,
+    action: PtzAction,
+) -> Result<(), grafton_ndi::Error> {
     log::trace!("Received PTZ action: {}", action);
     match action {
-        PtzAction::RecallPreset { preset, speed } => {
-            recv.ptz_recall_preset(preset, speed)
-        }
+        PtzAction::RecallPreset { preset, speed } => recv.ptz_recall_preset(preset, speed),
         PtzAction::Zoom { value } => recv.ptz_zoom(value),
         PtzAction::ZoomSpeed { speed } => recv.ptz_zoom_speed(speed),
-        PtzAction::PanTilt { pan, tilt } => {
-            recv.ptz_pan_tilt(pan, tilt)
-        }
+        PtzAction::PanTilt { pan, tilt } => recv.ptz_pan_tilt(pan, tilt),
         PtzAction::PanTiltSpeed {
             pan_speed,
             tilt_speed,
         } => recv.ptz_pan_tilt_speed(pan_speed, tilt_speed),
-        PtzAction::StorePreset { preset_no } => {
-            recv.ptz_store_preset(preset_no)
-        }
+        PtzAction::StorePreset { preset_no } => recv.ptz_store_preset(preset_no),
         PtzAction::AutoFocus => recv.ptz_auto_focus(),
         PtzAction::Focus { value } => recv.ptz_focus(value),
         PtzAction::FocusSpeed { speed } => recv.ptz_focus_speed(speed),
         PtzAction::WhiteBalanceAuto => recv.ptz_white_balance_auto(),
-        PtzAction::WhiteBalanceIndoor => {
-            recv.ptz_white_balance_indoor()
-        }
-        PtzAction::WhiteBalanceOutdoor => {
-            recv.ptz_white_balance_outdoor()
-        }
-        PtzAction::WhiteBalanceOneshot => {
-            recv.ptz_white_balance_oneshot()
-        }
-        PtzAction::WhiteBalanceManual { red, blue } => {
-            recv.ptz_white_balance_manual(red, blue)
-        }
+        PtzAction::WhiteBalanceIndoor => recv.ptz_white_balance_indoor(),
+        PtzAction::WhiteBalanceOutdoor => recv.ptz_white_balance_outdoor(),
+        PtzAction::WhiteBalanceOneshot => recv.ptz_white_balance_oneshot(),
+        PtzAction::WhiteBalanceManual { red, blue } => recv.ptz_white_balance_manual(red, blue),
         PtzAction::ExposureAuto => recv.ptz_exposure_auto(),
-        PtzAction::ExposureManual { level } => {
-            recv.ptz_exposure_manual(level)
-        }
+        PtzAction::ExposureManual { level } => recv.ptz_exposure_manual(level),
         PtzAction::ExposureManualV2 {
             iris,
             gain,
