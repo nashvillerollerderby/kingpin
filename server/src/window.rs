@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::{Arc, MutexGuard};
 use std::time::Duration;
+use sdl2::video::FullscreenType;
 
 trait ToSdl2PixelFormat {
     fn to_sdl2_pixel_format(&self) -> Option<sdl2::pixels::PixelFormatEnum>;
@@ -46,16 +47,18 @@ pub async fn spawn_window(
         .load_mappings(PathBuf::from("./resources/gamecontrollerdb.txt"))
         .expect("Could not load gamecontrollerdb.txt into SDL2");
 
-    let window = video_subsystem
+    let mut window = video_subsystem
         .window("Kingpin PTZ Controller", 1280, 800)
         .vulkan()
         .position_centered()
-        // .fullscreen()
         .resizable()
         .build()
         .unwrap();
+    if shared_application_state.fullscreen {
+        window.set_fullscreen(FullscreenType::Desktop)?;
+    }
 
-    let mut canvas = window.into_canvas().build().unwrap();
+    let mut canvas = window.into_canvas().build()?;
     let texture_creator = canvas.texture_creator();
 
     let mut status = ApplicationStatus::Unset;

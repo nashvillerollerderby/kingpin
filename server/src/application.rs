@@ -50,14 +50,16 @@ pub struct SharedApplicationState {
     pub mutex: Arc<Mutex<RwLockedApplicationState>>,
     pub frame_rx: crossbeam_channel::Receiver<VideoFrame>,
     pub ndi_streaming_state: Arc<NdiStreamingSharedState>,
+    pub fullscreen: bool,
 }
 
 impl SharedApplicationState {
-    pub fn new(frame_rx: crossbeam_channel::Receiver<VideoFrame>, ndi: NdiStreaming) -> Self {
+    pub fn new(frame_rx: crossbeam_channel::Receiver<VideoFrame>, ndi: NdiStreaming, fullscreen: bool) -> Self {
         Self {
             mutex: Arc::new(Mutex::new(RwLockedApplicationState::new())),
             frame_rx,
             ndi_streaming_state: ndi.shared_state.clone(),
+            fullscreen,
         }
     }
 }
@@ -65,6 +67,7 @@ impl SharedApplicationState {
 pub async fn launch(
     frame_rx: crossbeam_channel::Receiver<VideoFrame>,
     ndi: NdiStreaming,
+    fullscreen: bool
 ) -> Result<()> {
-    window::spawn_window(SharedApplicationState::new(frame_rx, ndi)).await
+    window::spawn_window(SharedApplicationState::new(frame_rx, ndi, fullscreen)).await
 }

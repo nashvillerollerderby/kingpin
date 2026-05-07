@@ -190,7 +190,7 @@ impl NdiStream {
                                 log::error!("{}", e);
                             }
                             None => {
-                                log::warn!("No frame data");
+                                log::debug!("No frame data");
                             }
                         }
                     }
